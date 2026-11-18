@@ -49,6 +49,49 @@ main:
     mov dx, separador           ; AH sigue en 09h
     int 21h
 
+    mov dx, etiqueta_a
+    int 21h
+
+    ; === Funcion 02h: imprimir un caracter cargado en DL ===
+    mov al, [var_byte]          ; AL = 42 (2Ah)
+    add al, 30h                 ; 2Ah + 30h = 5Ah = "Z" (demostracion)
+    mov dl, al
+    mov ah, 02h
+    int 21h
+
+    mov dl, CR                  ; nueva linea con dos llamadas a 02h
+    int 21h
+    mov dl, LF
+    int 21h
+
+    mov ah, 09h
+    mov dx, etiqueta_t
+    int 21h
+
+    ; === Recorrer tabla_bytes e imprimir cada elemento ===
+    lea si, [tabla_bytes]       ; SI = offset del primer byte de la tabla
+    mov cx, ITERACIONES         ; CX = 5 iteraciones
+
+imprimir_tabla:
+    mov dl, [si]                ; DL = byte actual de la tabla
+    add dl, 30h                 ; conversion simple a ASCII (exacta solo para 0-9)
+    mov ah, 02h
+    int 21h
+    mov dl, 20h                 ; espacio entre elementos
+    int 21h
+    inc si                      ; avanzar al siguiente byte
+    loop imprimir_tabla         ; CX = CX - 1; repetir mientras CX != 0
+
+    mov dl, CR
+    int 21h
+    mov dl, LF
+    int 21h
+
+    ; === Mensaje final ===
+    mov ah, 09h
+    mov dx, fin_msg
+    int 21h
+
     ; Terminar el programa
     mov ax, 4C00h               ; funcion 4Ch: terminar con codigo de salida 0
     int 21h
