@@ -9,11 +9,15 @@ CR          EQU 0Dh             ; retorno de carro
 LF          EQU 0Ah             ; salto de linea
 TERMINADOR  EQU 24h             ; "$" terminador de cadena para la funcion 09h
 ITERACIONES EQU 5               ; elementos de tabla_bytes que recorre el bucle
+ANCHO_LINEA EQU 40              ; ancho de la linea decorativa generada con TIMES
 
 ; -- Datos inicializados -------------------------------------------------------
 section .data
 bienvenida  db "=== Laboratorio NASM - Unidad 4 ===", CR, LF, TERMINADOR
 separador   db "----------------------------------------", CR, LF, TERMINADOR
+linea_gruesa:
+            TIMES ANCHO_LINEA DB '='   ; ANCHO_LINEA bytes '=' creados al ensamblar
+            DB CR, LF, TERMINADOR
 etiqueta_a  db "Variable A (byte + 30h): ", TERMINADOR
 etiqueta_t  db "Tabla de bytes (+30h):   ", TERMINADOR
 fin_msg     db "Programa finalizado correctamente.", CR, LF, TERMINADOR
@@ -87,9 +91,11 @@ imprimir_tabla:
     mov dl, LF
     int 21h
 
-    ; === Mensaje final ===
+    ; === Mensaje final y linea decorativa generada con TIMES ===
     mov ah, 09h
     mov dx, fin_msg
+    int 21h
+    mov dx, linea_gruesa
     int 21h
 
     ; Terminar el programa
