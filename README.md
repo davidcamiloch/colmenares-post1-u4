@@ -92,6 +92,10 @@ El archivo `programa2.lst` muestra cada línea con su dirección, su código má
 Suma 1+2+3 = 6
 El valor mayor es: 9
 Los valores son iguales.
+---
+---
+---
+AX es menor o igual: 3
 Fin del programa.
 ```
 
@@ -101,3 +105,11 @@ Fin del programa.
 - `print_str` preserva AX con PUSH y POP. En MS-DOS real la función 09h devuelve AL = 24h, un efecto no documentado; sin esa protección `print_str msg_mayor` seguido de `print_digito` imprimiría `4` (24h AND 0Fh) en lugar del valor comparado. DOSBox conserva AL, pero el programa no depende de esa diferencia.
 - El resultado de la suma usa su propio mensaje `msg_suma` en lugar de reutilizar `msg_mayor`.
 - `sumar_serie`, `comparar_e_imprimir` y `comparar_menor_o_igual` preservan con PUSH y POP los registros que modifican y que el llamador necesita.
+
+### Decisión técnica 3: %rep frente a LOOP para un número de repeticiones fijo
+
+`bloque_decorativo` se invoca siempre con un número pequeño y fijo de copias conocido al escribir el programa (3). Para ese caso %rep es una alternativa razonable a `repetir_str`. La expansión con 3 copias de `print_str` ocupa 3 × 9 = 27 bytes (`push ax`, `mov ah`, `mov dx`, `int 21h` y `pop ax` suman 9 bytes por copia según `programa2.lst`), del mismo orden que los 12 bytes de `repetir_str` con su carga de CX y su LOOP; a cambio no ejecuta ninguna instrucción de control. Si se invocara con 1000 copias el costo cambiaría por completo; NASM escribiría 9 000 bytes de código repetido, cerca de la séptima parte de un segmento de 64 KB, frente a los mismos 12 bytes de `repetir_str` con cualquier conteo. `repetir_str` sigue siendo la opción correcta cuando el número de repeticiones es un valor de tiempo de ejecución, por ejemplo un dígito leído con `leer_char`. %rep se resuelve en el preprocesador y necesita una constante al ensamblar; no puede repetir un número de veces que todavía no existe. En el código expandido de `repetir_str` aparecen `mov cx, 3` y `loop` con su salto hacia atrás, y en cada vuelta el procesador decrementa CX y evalúa el salto. En la expansión de `bloque_decorativo` no hay CX, ni LOOP, ni comparación; solo tres copias consecutivas del cuerpo. Esa ausencia es el costo cero en tiempo de ejecución que ofrece %rep.
+
+### Decisión técnica 4: etiquetas locales %% en las extensiones
+
+`repetir_str` necesita `%%ciclo` porque LOOP salta hacia atrás a una etiqueta dentro de la propia macro, y la macro puede expandirse varias veces en el mismo programa; sin %% cada expansión definiría el mismo nombre y NASM reportaría un símbolo duplicado. `bloque_decorativo`, tal como está escrita, no necesita ninguna etiqueta aunque se invoque varias veces. Su cuerpo no contiene saltos ni definiciones de etiqueta; %rep solo copia invocaciones de `print_str`, que tampoco definen etiquetas, de modo que ninguna expansión crea un nombre que pueda chocar con otro. La necesidad aparecería en el momento en que el cuerpo incluyera un salto interno, por ejemplo un `jmp` condicional que omitiera la última copia. Ese salto requiere una etiqueta de destino dentro de la macro, y una etiqueta definida en el cuerpo se repite en cada expansión; desde ese punto tendría que escribirse como `%%omitir` para que cada invocación genere un nombre propio. `comparar_menor_o_igual` usa etiquetas con punto (`.menor_o_igual`, `.fin_cmp2`) y no %%. En NASM una etiqueta con punto es local respecto a la última etiqueta sin punto; internamente se llama `comparar_menor_o_igual.menor_o_igual`. Las de `comparar_e_imprimir` se llaman `comparar_e_imprimir.son_iguales` y `comparar_e_imprimir.fin_comp`. Cada procedimiento se define una sola vez y no se expande por invocación, así que esos nombres completos nunca se repiten y el mecanismo %%, pensado para macros, no hace falta.

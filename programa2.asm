@@ -1,5 +1,5 @@
 ; programa2.asm - Laboratorio Post1 Unidad 4 (Parte 2)
-; Proposito: macros con parametros y etiquetas locales,
+; Proposito: macros con parametros y etiquetas locales, macro con %rep,
 ;            bucle acumulador con LOOP y condicionales con CMP/Jcc.
 ; Ensamblado: nasm -f obj programa2.asm -o programa2.obj -l programa2.lst
 ; Enlazado:   alink programa2.obj -oEXE -o programa2.exe -entry main
@@ -13,6 +13,9 @@ linea_b         db "[Linea B] Segunda impresion", 0Dh, 0Ah, 24h
 msg_suma        db "Suma 1+2+3 = ", 24h
 msg_mayor       db "El valor mayor es: ", 24h
 msg_iguales     db "Los valores son iguales.", 0Dh, 0Ah, 24h
+separador_corto db "---", 0Dh, 0Ah, 24h
+msg_menor_igual db "AX es menor o igual: ", 24h
+msg_mayor2      db "AX es mayor: ", 24h
 msg_fin         db "Fin del programa.", 0Dh, 0Ah, 24h
 
 section .bss
@@ -52,7 +55,15 @@ main:
     mov bx, 5
     call comparar_e_imprimir
 
-    ; 6. Mensaje final y terminacion
+    ; 6. Bloque decorativo desenrollado con %rep (3 copias)
+    bloque_decorativo 3
+
+    ; 7. Comparar 3 frente a 8 con JLE reutilizando las mismas macros
+    mov ax, 3
+    mov bx, 8
+    call comparar_menor_o_igual ; imprime "AX es menor o igual: 3"
+
+    ; 8. Mensaje final y terminacion
     print_str msg_fin
     fin_dos
 
@@ -95,6 +106,29 @@ comparar_e_imprimir:
     print_str msg_iguales
 
 .fin_comp:
+    pop bx
+    pop ax
+    ret
+
+; ------------------------------------------------------------------------------
+; comparar_menor_o_igual: indica si AX <= BX (JLE) o AX > BX, e imprime AX
+; Entrada: AX, BX (0-9)    Preserva: AX, BX
+comparar_menor_o_igual:
+    push ax
+    push bx
+    cmp ax, bx                  ; flags segun AX - BX
+    jle .menor_o_igual          ; ZF = 1 o SF != OF (con signo)
+
+    print_str msg_mayor2
+    print_digito
+    jmp .fin_cmp2
+
+.menor_o_igual:
+    print_str msg_menor_igual
+    print_digito
+
+.fin_cmp2:
+    nueva_linea
     pop bx
     pop ax
     ret
