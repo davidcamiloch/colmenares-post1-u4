@@ -69,3 +69,35 @@ El ancho de la línea decorativa se define como `ANCHO_LINEA EQU 40` y se usa en
 ### Decisión técnica 2: TIMES en .data frente a RESB con relleno en tiempo de ejecución
 
 La línea decorativa se construye con `TIMES ANCHO_LINEA DB '='` dentro de `section .data`. Frente a escribir a mano los 40 signos dentro de un literal DB, TIMES concentra el ancho en un solo número; cambiar la línea a 60 caracteres exige modificar un valor y no contar y editar caracteres, con el riesgo de equivocarse en el conteo. La alternativa de reservar `RESB 40` en `section .bss` y llenar el espacio con un bucle LOOP al inicio de main es válida en principio y produciría la misma salida. En este caso concreto resulta innecesaria; el contenido de la línea nunca cambia entre una ejecución y la siguiente, así que no hay nada que calcular en tiempo de ejecución. Con TIMES los 40 bytes ya forman parte de la imagen del ejecutable y DOS los carga junto con el resto de `.data`; el programa no ejecuta ninguna instrucción para producirlos. Con RESB más bucle el arranque añade la carga de DI y CX, la escritura del carácter y unas 40 iteraciones de LOOP, además de los dos bytes finales CR y LF y el terminador "$" que también habría que escribir. RESB conviene cuando el contenido se conoce solo al ejecutar, como el `buffer` de 80 bytes reservado para una entrada de teclado. Para datos fijos conocidos al ensamblar, TIMES en .data es la opción correcta.
+
+## Parte 2: Macros con parámetros y control de flujo
+
+### Compilación y ejecución
+
+```
+C:\> nasm -f obj programa2.asm -o programa2.obj -l programa2.lst
+C:\> alink programa2.obj -oEXE -o programa2.exe -entry main
+C:\> programa2.exe
+```
+
+El archivo `programa2.lst` muestra cada línea con su dirección, su código máquina y las expansiones de las macros, marcadas por NASM con el nivel de anidamiento (`<1>`, `<2>`, `<3>`).
+
+### Salida esperada
+
+```
+=== Macros y Control de Flujo ===
+[Linea A] Primera impresion
+[Linea A] Primera impresion
+[Linea A] Primera impresion
+Suma 1+2+3 = 6
+El valor mayor es: 9
+Los valores son iguales.
+Fin del programa.
+```
+
+### Notas de implementación
+
+- `macros.asm` contiene solo macros y se incluye con `%include`; no genera bytes hasta que una macro se invoca.
+- `print_str` preserva AX con PUSH y POP. En MS-DOS real la función 09h devuelve AL = 24h, un efecto no documentado; sin esa protección `print_str msg_mayor` seguido de `print_digito` imprimiría `4` (24h AND 0Fh) en lugar del valor comparado. DOSBox conserva AL, pero el programa no depende de esa diferencia.
+- El resultado de la suma usa su propio mensaje `msg_suma` en lugar de reutilizar `msg_mayor`.
+- `sumar_serie`, `comparar_e_imprimir` y `comparar_menor_o_igual` preservan con PUSH y POP los registros que modifican y que el llamador necesita.
