@@ -113,3 +113,25 @@ Fin del programa.
 ### Decisión técnica 4: etiquetas locales %% en las extensiones
 
 `repetir_str` necesita `%%ciclo` porque LOOP salta hacia atrás a una etiqueta dentro de la propia macro, y la macro puede expandirse varias veces en el mismo programa; sin %% cada expansión definiría el mismo nombre y NASM reportaría un símbolo duplicado. `bloque_decorativo`, tal como está escrita, no necesita ninguna etiqueta aunque se invoque varias veces. Su cuerpo no contiene saltos ni definiciones de etiqueta; %rep solo copia invocaciones de `print_str`, que tampoco definen etiquetas, de modo que ninguna expansión crea un nombre que pueda chocar con otro. La necesidad aparecería en el momento en que el cuerpo incluyera un salto interno, por ejemplo un `jmp` condicional que omitiera la última copia. Ese salto requiere una etiqueta de destino dentro de la macro, y una etiqueta definida en el cuerpo se repite en cada expansión; desde ese punto tendría que escribirse como `%%omitir` para que cada invocación genere un nombre propio. `comparar_menor_o_igual` usa etiquetas con punto (`.menor_o_igual`, `.fin_cmp2`) y no %%. En NASM una etiqueta con punto es local respecto a la última etiqueta sin punto; internamente se llama `comparar_menor_o_igual.menor_o_igual`. Las de `comparar_e_imprimir` se llaman `comparar_e_imprimir.son_iguales` y `comparar_e_imprimir.fin_comp`. Cada procedimiento se define una sola vez y no se expande por invocación, así que esos nombres completos nunca se repiten y el mecanismo %%, pensado para macros, no hace falta.
+
+## Ejecución real en DOSBox 0.74
+
+Las capturas se tomaron en DOSBox 0.74-3 con NASM 3.02 para DOS y ALINK 1.6 en su versión RSXNT. La ejecución real mostró dos desviaciones respecto de la guía.
+
+- ALINK en su versión RSXNT necesita un servidor DPMI. Sin él responde `rsx_32 loader error: No DPMI-host found!`. Antes de enlazar se cargó `cwsdpmi -p`; `cwsdpmi.exe` viene en el paquete DOS de NASM.
+- DOSBox 0.74 no admite nombres largos y recorta cada nombre a 8 caracteres más 3 de extensión. `programa2.asm` se resuelve como `PROGRAMA.ASM`; el comando de la guía vuelve a ensamblar la Parte 1 y sobrescribe `programa.obj`. El listado generado de esa forma comienza con `; programa.asm - Laboratorio Post1 Unidad 4 (Parte 1)`. Para las capturas de la Parte 2 se usó una copia local idéntica con nombre corto (`p2.asm`) y los comandos `nasm -f obj p2.asm -o p2.obj -l p2.lst` y `alink p2.obj -oEXE -o p2.exe -entry main`. El código del repositorio no cambia.
+
+## Capturas
+
+| Captura | Contenido |
+|---------|-----------|
+| `capturas/p1-compilacion.png` | Ensamblado con NASM y enlazado con ALINK de la Parte 1 |
+| `capturas/p1-ejecucion.png` | Ejecución de `programa.exe` con la línea de 40 signos `=` |
+| `capturas/p2-compilacion.png` | Ensamblado con listado y enlazado de la Parte 2 |
+| `capturas/p2-listado.png` | `programa2.lst` con la expansión de macros |
+| `capturas/p2-ejecucion.png` | Ejecución completa de `programa2.exe` |
+
+## Referencias
+
+- NASM Development Team. (s.f.). *NASM — The Netwide Assembler: documentación*. https://www.nasm.us/doc/
+- Brown, R. (s.f.). *Ralf Brown's Interrupt List: INT 21h*. https://www.ctyme.com/intr/int-21.htm
